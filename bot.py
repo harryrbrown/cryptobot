@@ -13,6 +13,7 @@ updater = Updater(token=telegramkey)
 dispatcher = updater.dispatcher
 jobs = updater.job_queue
 CHAT_ID = 0 # REPLACE WITH TELEGRAM CHAT ID
+VALID_USERS = [] # ADD IDS OF USERS PERMITTED TO USE BOT
 
 # KRAKEN SETUP #
 kra = krakenex.API()
@@ -24,42 +25,62 @@ milestones = {'BCH' : 650}
 alert_diff = 25
 last = (int(time.time()) - 300) * 1000000000
 RANGE = range(1)
-INITIAL_INVESTMENT = 1000.0
 
 def checkvalue(bot, update):
-    ret = "*##### FIAT FUNDS #####*\n"
+    if update.message.from_user.id in VALID_USERS:
+        progress = bot.send_message(chat_id=update.message.chat_id, text="Checking value...")
 
-    bal = kra.query_private('Balance')
-    val = 0.0
+        ret = "*##### FIAT FUNDS #####*\n"
+        try:
+            bal = kra.query_private('Balance')
+            bal1 = kra.query_private('TradeBalance', {'asset': 'ZEUR'})
+        except:
+            print("Error")
+            bot.edit_message_text(chat_id=update.message.chat_id, message_id=progress['message_id'], text="Error retrieving balance, please try again")
 
-    try:
-        ret += "EUR: " + str(bal['result']['ZEUR']) + '\n\n'
-    except:
-        ret += "No currency was found in the wallet.\n\n"
+        ledgers = kra.query_private('Ledgers', {'type': 'deposit'})
+        total = float(bal1['result']['eb'])
+        initial_invest = 0
 
-    ret += "*##### CRYPTO FUNDS #####*\n"
-    for currency in bal['result']:
-        if currency[1:] != "EUR":
-            cur = currency if len(currency) == 3 else currency[1:]
-            usd = "USD" if len(currency) == 3 else "ZUSD"
-            ret += cur + ": " + bal['result'][currency] + '\n'
+        try:
+            ret += "EUR: " + str(bal['result']['ZEUR']) + "€" + '\n'
 
-            response = kra.query_public('Ticker', {'pair': currency+usd})
-            val += float(response['result'][currency+usd]['c'][0]) * float(bal['result'][currency])
+            try:
+                ret += "USD: $" + str(bal['result']['ZUSD']) + '\n'
+            except:
+                pass
+            ret += '\n'
+        except:
+            ret += "No currency was found in the wallet.\n\n"
 
-    ret += "\nEstimated total worth: $" + str("%.2f" % val) + " ("
-    percent = (max(INITIAL_INVESTMENT, float("%.2f" % val)) / min(INITIAL_INVESTMENT, float("%.2f" % val)) - 1) * 100
-    if INITIAL_INVESTMENT > val: percent *= -1
+        ret += "*##### CRYPTO FUNDS #####*\n"
+        for currency in bal['result']:
+            bot.edit_message_text(chat_id=update.message.chat_id, message_id=progress['message_id'], text="Checking " + currency + "...")
 
-    gain = str("%.2f" % (val - INITIAL_INVESTMENT))
-    if gain[0] == '-':
-        gain = "-$" + gain[1:]
+            print("Checking " + currency + "...")
+            if currency[1:] != "EUR" and currency[1:] != "USD":
+                cur = currency if len(currency) == 3 else currency[1:]
+                ret += cur + ": " + bal['result'][currency] + '\n'
+
+        for ledger in ledgers['result']['ledger']:
+            initial_invest += float(ledgers['result']['ledger'][ledger]['amount'])
+
+        ret += "\nEstimated total worth: €" + str("%.2f" % total) + " ("
+        percent = (max(initial_invest, float("%.2f" % total)) / min(initial_invest, float("%.2f" % total)) - 1) * 100
+        if initial_invest > total: percent *= -1
+
+        gain = str("%.2f" % (total - initial_invest))
+        if gain[0] == '-':
+            gain = "-€" + gain[1:]
+        else:
+            gain = '+€' + gain
+
+        ret += gain + ", " + str("%.4f" % percent) + "%)"
+
+        bot.send_message(chat_id=update.message.chat_id, text=ret, parse_mode="Markdown")
+        bot.delete_message(chat_id=update.message.chat_id, message_id=progress['message_id'])
     else:
-        gain = '+$' + gain
-
-    ret += gain + ", " + str("%.4f" % percent) + "%)"
-
-    bot.send_message(chat_id=update.message.chat_id, text=ret, parse_mode="Markdown")
+        bot.send_message(chat_id=update.message.chat_id, text="Not permitted")
 
 def bitcoincash(bot, update):
     print(update.message.chat_id)
@@ -137,7 +158,7 @@ dispatcher.add_handler(bch_handler)
 dispatcher.add_handler(eth_handler)
 dispatcher.add_handler(ltc_handler)
 dispatcher.add_handler(conv_handler)
-jobs.run_repeating(pricealert, interval=60.0)
+# jobs.run_repeating(pricealert, interval=60.0)
 
 dispatcher.add_error_handler(error)
 
