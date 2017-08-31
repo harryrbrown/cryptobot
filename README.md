@@ -1,5 +1,3 @@
-# cryptobot
-=======
 # CryptoBot
 A basic Telegram bot for communicating with a Kraken account.
 Uses the Python Telegram Bot (https://github.com/python-telegram-bot/python-telegram-bot) and Krakenex (https://github.com/veox/python3-krakenex)
