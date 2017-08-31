@@ -5,7 +5,7 @@ Uses the Python Telegram Bot (https://github.com/python-telegram-bot/python-tele
 ## Usage
 - Register a new bot on Telegram by messaging @BotFather
 - Enter your API keys for Kraken and Telegram into the relevant files (kraken.ke and telegram.ke)
-- Update the value of CHAT\_ID to the Telegram chat ID that contains the bot 
+- Update the value of CHAT\_ID to the Telegram chat ID that contains the bot, and of VALID\_USERS to the users permitted to use the price checking
 
 ## Commands
 Some demo commands are included for specific currencies; adding new functionality to the bot is straightforward by just replacing the currency name in the code.
